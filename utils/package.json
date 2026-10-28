@@ -1,0 +1,17 @@
+{
+  "name": "utils",
+  "author": "biggy",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.25.1",
+    "node-fetch": "^3.3.2"
+  },
+  "version": "1.2.1",
+  "description": "dev by biggy",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "ISC"
+}

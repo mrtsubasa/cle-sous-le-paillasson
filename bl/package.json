@@ -1,0 +1,8 @@
+{
+  "name": "blacklistbot",
+  "author": "biggy",
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.25.1"
+  }
+}

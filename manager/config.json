@@ -1,0 +1,42 @@
+{
+  "token": "",
+  "owners": [
+    "189718516176388107",
+    "558092130455781387",
+    "197569282832465920",
+    "922438732529950790"
+  ],
+  "color": "#2b2d31",
+  "channel": {
+    "logs": "1505552582746177566",
+    "botCreateLogs": "1505552443755462806",
+    "botActionLogs": "1505552664006496327",
+    "adminActionLogs": "1505552706352189541",
+    "botDeleteLogs": "1505552753173336275",
+    "keyCreateLogs": "1505533999550824480",
+    "keyDeleteLogs": "1523996498373640305",
+    "keyDropLogs": "1505552836795174972",
+    "buyerChangeLogs": "1505552913903386826",
+    "tokenChangeLogs": "1505533990063575222",
+    "startLogs": "1505553010011537569",
+    "stopLogs": "1505553045205942424",
+    "restartLogs": "1505553078642806826",
+    "botErrorLogs": "1523996582683611156",
+    "clientStartupLogs": "1505533957721161879",
+    "createLogs": "1505553123911929982",
+    "updateLogs": "1505553160662421739",
+    "addBotLogs": "1505553195454300193",
+    "reminderLogs": "1505553233693769739",
+    "expirationLogs": "1505553280644681738",
+    "trialLogs": "1505553319018364999",
+    "expiryReminderLogs": "1505553357442519243"
+  },
+  "guildId": "1505236863580110898",
+  "clientRoleId": "1505533886472523777",
+  "expiryReminderEnabled": true,
+  "expiryReminderDays": 1,
+  "database": {
+    "path": "./Utils/DataBase/database.db"
+  },
+  "PID": []
+}

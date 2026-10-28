@@ -1,0 +1,24 @@
+{
+  "name": "musiquemultibot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "check": "node --check src/index.js && node --check src/deploy-commands.js && find src/core src/commands -name '*.js' -exec node --check {} \\;"
+  },
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.4.5",
+    "kazagumo": "^3.4.2",
+    "kazagumo-spotify": "^2.1.1",
+    "shoukaku": "^4.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

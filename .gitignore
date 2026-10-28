@@ -1,0 +1,39 @@
+# Archives (le zip ne part PAS sur le repo)
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+
+# Dependances
+node_modules/
+
+# Secrets
+.env
+.env.*
+.token-secret
+*.key
+
+# Bases de donnees (tokens, cles de licence, IDs clients)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Donnees runtime generees par le manager et les bots
+manager/BotRuntimes/
+manager/BotsFolders/
+sanction/data/*.json
+!sanction/data/.gitkeep
+music/data/
+music/src/data/
+ticket/transcripts/*
+
+# Logs / OS / IDE
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

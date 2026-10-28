@@ -1,0 +1,287 @@
+===============================================================================
+  ANALYSE DE SECURITE - GESTION DES TOKENS DISCORD (projet ZixBots)
+  Date : 28/10/2026
+  Perimetre : manager/ (tokenVault, base SQLite, API locale, lancement des
+              bots) + templates de bots (bl, blr, gestion, logs, music, ...)
+===============================================================================
+
+-------------------------------------------------------------------------------
+ 0. VERDICT EN UNE PHRASE
+-------------------------------------------------------------------------------
+
+Le chiffrement des tokens est bien code, mais il ne protege presque rien : la
+cle est un simple fichier texte range dans le projet, juste a cote des
+donnees chiffrees et lisible par tout le monde. Toute copie du dossier
+(archive, sauvegarde, depot Git) emporte la cle avec les tokens. Dans les
+faits, c'est l'equivalent d'un coffre-fort avec la cle scotchee sur la porte.
+
+Niveau de risque global (avant le nettoyage) : CRITIQUE
+Niveau de risque global (apres le nettoyage) : MOYEN (le probleme de
+conception reste dans le code, il reviendra des que de vrais tokens seront
+remis dans la base)
+
+
+-------------------------------------------------------------------------------
+ 1. CE QUI EST BIEN FAIT (pour etre honnete)
+-------------------------------------------------------------------------------
+
+- AES-256-GCM est un bon choix : c'est un chiffrement authentifie, donc une
+  modification du texte chiffre est detectee.
+- L'IV est aleatoire et fait 12 octets (crypto.randomBytes(12)) pour chaque
+  token. C'est exactement la bonne pratique, il n'y a pas de reutilisation
+  de nonce.
+- Le tag d'authentification est stocke et verifie (setAuthTag).
+- L'API interne ecoute uniquement sur 127.0.0.1, elle n'est pas exposee sur
+  Internet.
+- Les routes de l'API ne renvoient jamais le token (parseApiRow ne contient
+  pas le champ token). C'est un bon reflexe.
+- Une cle peut etre fournie par variable d'environnement (TOKEN_VAULT_KEY),
+  ce qui permet de la sortir du disque.
+
+Bref, la personne qui a ecrit tokenVault.js sait utiliser la crypto de
+Node. Le probleme ne vient pas de l'algorithme, il vient de l'endroit ou est
+rangee la cle et de qui peut y acceder.
+
+
+-------------------------------------------------------------------------------
+ 2. LES FAILLES, PAR ORDRE DE GRAVITE
+-------------------------------------------------------------------------------
+
+[F1] CRITIQUE - La cle maitre est stockee a cote des donnees chiffrees
+     Fichiers : manager/Utils/tokenVault.js (DEFAULT_KEY_PATH)
+                manager/Utils/.token-secret
+                manager/Utils/DataBase/database.db
+
+     La cle AES est dans manager/Utils/.token-secret, a deux dossiers de la
+     base qui contient les 55 tokens chiffres. Quiconque peut lire l'un peut
+     lire l'autre. Le chiffrement ne protege donc que contre quelqu'un qui
+     ouvrirait la base seule, ce qui n'arrive quasiment jamais dans un vrai
+     incident (vol de serveur, sauvegarde qui fuit, archive partagee, acces
+     au compte Unix...).
+
+     Mon avis : en l'etat, c'est de l'obfuscation, pas de la protection.
+     Ca donne un faux sentiment de securite, ce qui est presque pire que
+     rien, parce qu'on finit par partager des fichiers en pensant qu'ils
+     sont "chiffres donc safe".
+
+
+[F2] CRITIQUE - Tout ce qu'il faut pour dechiffrer est dans le projet
+     Fichiers : manager/Utils/.token-secret (la cle, 44 caracteres base64)
+                manager/Utils/DataBase/database.db (+ -wal) : 55 tokens chiffres
+                manager/config.json : token chiffre du manager
+
+     Ces trois fichiers font partie du dossier du projet. Il n'y a rien a
+     pirater : lire un seul fichier texte (.token-secret) donne la cle, et
+     10 lignes de Node suffisent ensuite pour dechiffrer les 56 tokens. Les
+     37 cles de licence, elles, sont stockees en clair dans la base.
+
+     Le dossier est donc "auto-dechiffrable" : n'importe quelle copie
+     (archive envoyee, sauvegarde, push Git, acces au serveur) contient a la
+     fois les donnees et leur cle. Le fichier ZixBots.zip present dans le
+     dossier contenait d'ailleurs l'ensemble. Il a ete reconstruit sans ces
+     fichiers pendant le nettoyage.
+
+     Un token de bot Discord donne le controle total du bot : lire les
+     messages, bannir, supprimer des salons, nuker les serveurs ou il a les
+     droits admin. Avec 55 bots clients, ca peut toucher autant de serveurs.
+
+     ACTION RECOMMANDEE : si une copie du dossier d'origine (zip, sauvegarde,
+     depot) a pu circuler, regenerer les 56 tokens sur le Discord Developer
+     Portal. Les supprimer des fichiers ne les invalide pas.
+
+
+[F3] ELEVEE - Permissions : fichiers sensibles lisibles par tous
+     Observation : .token-secret et database.db etaient en -rwxr-xr-x (755).
+
+     N'importe quel utilisateur ou service de la machine pouvait lire la cle
+     et la base. De plus, le bit d'execution n'a aucune raison d'etre sur ces
+     fichiers.
+     Il faut : chmod 600 sur la cle et la base, chmod 700 sur les dossiers,
+     appartenant a un utilisateur systeme dedie.
+
+
+[F4] ELEVEE - API interne sans authentification par defaut
+     Fichiers : manager/Handlers/apiServer.js (isAuthorized)
+                manager/Handlers/botsService.js (getApiSecret)
+
+         function isAuthorized(req, secret) {
+           if (!secret) return true;      <-- ouvert si pas de cle
+           ...
+
+     manager/config.json ne contient pas de bloc "api", et rien n'oblige a
+     definir BOTS_API_KEY. Dans la config livree, l'API est donc OUVERTE a
+     tout processus local. Or POST /bots/edit accepte un nouveau "token" et
+     un nouvel "ownerId", et /bots/<id>/... permet start/stop.
+
+     Consequence : n'importe quel processus de la machine, y compris un des
+     bots clients s'il est compromis (dependance npm vérolee, faille dans
+     une commande), peut changer le proprietaire d'un bot, remplacer son
+     token ou arreter tous les bots.
+     Le principe "fail open" (pas de secret = tout est autorise) est une
+     erreur classique. Il faut faire l'inverse : sans secret, l'API refuse
+     de demarrer.
+
+
+[F5] ELEVEE - Pas d'isolation entre le manager et les bots clients
+     Fichiers : manager/Handlers/instanceService.js (spawn ... env: {...process.env})
+                gestion/src/config.js, music/src/core/config.js
+                (require('../../../Utils/tokenVault'))
+
+     - Chaque bot est lance avec TOUT l'environnement du manager
+       (...process.env). Si TOKEN_VAULT_KEY ou BOTS_API_KEY sont definies,
+       chaque bot client les recoit.
+     - Les bots chargent directement le tokenVault du manager par un chemin
+       relatif, et tournent sous le meme utilisateur Unix. Ils ont donc
+       acces a la meme cle maitre que le manager.
+
+     Consequence : compromettre UN seul bot donne acces aux tokens de TOUS
+     les bots. C'est le point qui m'inquiete le plus sur la duree, parce que
+     la surface d'attaque (55 processus, des dizaines de dependances npm,
+     des commandes qui traitent des entrees d'utilisateurs Discord) est
+     enorme par rapport au manager seul.
+     Bonne pratique : chaque bot ne recoit QUE son propre token, deja
+     dechiffre, via une variable d'env minimale, et n'a jamais acces a la cle.
+
+
+[F6] MOYENNE - Echec de dechiffrement silencieux
+     Fichier : manager/Utils/tokenVault.js (decryptToken)
+
+         } catch {
+           return value;     <-- renvoie le texte chiffre tel quel
+         }
+
+     Si la cle est mauvaise ou si les donnees sont corrompues, la fonction
+     renvoie la chaine "enc:v1:..." comme si c'etait un token. Le bot essaie
+     alors de se connecter avec, echoue, et l'erreur affichee ("token
+     invalide") cache la vraie cause. La chaine chiffree peut aussi finir
+     dans des logs ou des messages d'erreur.
+     Il faut lever une erreur explicite, sans valeur sensible dans le message.
+
+
+[F7] MOYENNE - Regeneration automatique et silencieuse de la cle
+     Fichier : manager/Utils/tokenVault.js (getKeyBuffer)
+
+     Si .token-secret n'existe pas, une nouvelle cle aleatoire est creee
+     sans avertissement. Tous les tokens deja chiffres deviennent alors
+     indechiffrables, et a cause de F6 personne ne s'en rend compte avant
+     que les bots refusent de demarrer. Une simple erreur de chemin ou de
+     deploiement suffit a provoquer une perte de donnees silencieuse.
+     Il faut refuser de demarrer si des tokens chiffres existent et que la
+     cle est absente.
+
+
+[F8] FAIBLE - Repli SHA-256 sur une passphrase
+     Fichier : manager/Utils/tokenVault.js (getKeyBuffer)
+
+     Si la cle n'est pas une valeur base64 de 32 octets, elle est hachee une
+     seule fois en SHA-256. Pour une passphrase humaine ("monmdp123"), c'est
+     cassable par force brute hors ligne. Il faudrait scrypt/argon2 avec un
+     sel, ou plus simplement refuser tout ce qui n'est pas une cle de 32
+     octets.
+
+
+[F9] FAIBLE - Pas de rotation ni de versionnement de cle
+     Le prefixe "enc:v1:" identifie le format mais pas la cle. Il n'y a
+     aucun moyen de changer de cle sans tout casser. Apres une fuite comme
+     F2, on ne peut pas faire "nouvelle cle + rechiffrement" proprement.
+     Il faudrait un identifiant de cle (ex. enc:v1:<keyId>:...) et un script
+     de rotation.
+
+
+[F10] FAIBLE - Identifiants d'infra en dur (corrige pendant le nettoyage)
+     Fichier : music/src/core/config.js
+     Le mot de passe Lavalink "agent" et l'hote panel.agentdushield.fr
+     servaient de valeurs par defaut. Avec un mot de passe aussi faible,
+     n'importe qui pouvait utiliser ce serveur Lavalink. Si "agent" est le
+     vrai mot de passe en production, il faut le changer.
+
+
+-------------------------------------------------------------------------------
+ 3. SCENARIO D'ATTAQUE REALISTE (avant nettoyage)
+-------------------------------------------------------------------------------
+
+  1. Un attaquant obtient une copie du dossier ou un acces en lecture au
+     serveur (archive partagee, sauvegarde, depot Git, compte ou processus
+     compromis sur la machine).
+  2. Il lit manager/Utils/.token-secret (44 caracteres en base64). Un seul
+     fichier a ouvrir, aucun piratage necessaire.
+  3. Il ouvre database.db avec n'importe quel lecteur SQLite et extrait les 55
+     lignes "enc:v1:...", plus le token de manager/config.json.
+  4. Il reutilise decryptToken() de tokenVault.js, qui est fourni avec.
+  5. Resultat : 56 tokens de bots Discord valides, plus 37 cles de licence
+     utilisables pour obtenir des bots gratuitement.
+  6. Avec les bots ayant les droits administrateur, il peut nuker des
+     serveurs clients, voler des messages ou faire du phishing en se faisant
+     passer pour un bot de confiance.
+
+  Temps necessaire pour un attaquant debutant : moins de 10 minutes.
+  Competence requise : savoir lancer un script Node.
+
+
+-------------------------------------------------------------------------------
+ 4. RECOMMANDATIONS, PAR PRIORITE
+-------------------------------------------------------------------------------
+
+  IMMEDIAT (aujourd'hui)
+  [ ] Si une copie du dossier d'origine a pu circuler : regenerer les 56
+      tokens Discord et invalider les 37 cles de licence.
+  [ ] Changer le mot de passe Lavalink si "agent" est utilise en prod.
+  [ ] Ne plus jamais mettre dans une archive : .token-secret, *.db, *.db-wal,
+      *.db-shm, .env, BotRuntimes/. Les ajouter au .gitignore et a un
+      script de packaging qui les exclut.
+
+  COURT TERME (cette semaine)
+  [ ] Sortir la cle du dossier du projet : TOKEN_VAULT_KEY dans un fichier
+      d'environnement systeme (systemd EnvironmentFile en 600) ou
+      TOKEN_VAULT_KEY_PATH vers /etc/zixbots/vault.key (600, root:zixbots).
+  [ ] chmod 600 sur la base et la cle, utilisateur systeme dedie.
+  [ ] Rendre BOTS_API_KEY obligatoire (l'API refuse de demarrer sans), et
+      comparer les secrets avec crypto.timingSafeEqual.
+  [ ] Dans instanceService / lauchChildProcess : ne plus passer
+      ...process.env. Donner a chaque bot uniquement son token dechiffre et
+      les variables strictement necessaires.
+
+  MOYEN TERME
+  [ ] decryptToken : lever une erreur au lieu de renvoyer le texte chiffre.
+  [ ] getKeyBuffer : ne plus generer de cle automatiquement si des donnees
+      chiffrees existent deja.
+  [ ] Ajouter un keyId au format et un script de rotation de cle.
+  [ ] Isolation des bots : un utilisateur Unix par bot, ou des conteneurs
+      (podman est deja present sur la machine), sans acces au dossier
+      manager/.
+  [ ] Pour aller plus loin : un vrai gestionnaire de secrets (Vault,
+      Infisical, SOPS + age) plutot qu'un fichier de cle.
+
+
+-------------------------------------------------------------------------------
+ 5. MON AVIS PERSONNEL
+-------------------------------------------------------------------------------
+
+Le code est au-dessus de la moyenne de ce qu'on voit sur les projets de
+"bot manager" Discord. La plupart stockent les tokens en clair dans un JSON,
+alors qu'ici il y a eu une vraie intention de bien faire, et la partie
+cryptographique est correcte.
+
+Mais la securite se joue sur le modele de menace, pas sur l'algorithme. La
+question a se poser, c'est : "si quelqu'un obtient une copie du dossier,
+qu'est-ce qu'il peut faire ?". La reponse etait : tout. Le chiffrement
+actuel protege contre un scenario qui n'arrive jamais (quelqu'un qui aurait
+la base mais pas la cle) et ne protege pas contre ceux qui arrivent tout le
+temps (fuite d'archive, de sauvegarde ou d'acces au serveur, ou un processus
+compromis sur la meme machine).
+
+Les deux corrections qui ont le plus d'impact pour le moins d'effort :
+  1. sortir la cle du dossier du projet,
+  2. arreter de donner aux bots clients l'acces a la cle et a l'environnement
+     du manager.
+Avec ces deux changements, le chiffrement commence a vraiment servir.
+
+Le plus parlant, c'est qu'aucune attaque n'est necessaire : lire un seul
+fichier du projet suffit pour tout dechiffrer. Si on n'est pas certain
+qu'aucune copie du dossier d'origine n'a circule, on regenere les tokens
+dans le doute. Ca prend 15 minutes, alors qu'un serveur client nuke par un
+bot vole coute la reputation du service.
+
+===============================================================================
+  Fin du rapport
+===============================================================================
