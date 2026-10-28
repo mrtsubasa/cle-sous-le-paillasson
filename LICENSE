@@ -1,0 +1,38 @@
+NOTICE - ZixBots (code source publie)
+=====================================
+
+Ce depot n'est PAS sous licence libre.
+
+1. PROPRIETE
+   Le code source de ce depot a ete ecrit par l'equipe ZixBots. Tous les
+   droits d'auteur appartiennent a ses auteurs d'origine. La personne qui
+   publie ce depot n'en revendique ni la paternite ni la propriete, et
+   n'accorde aucune licence d'utilisation, de modification ou de
+   redistribution, puisqu'elle n'a pas qualite pour le faire.
+
+   Respect au travail fourni : le code est plus soigne que la moyenne des
+   bot managers Discord. Le chiffrement aussi. C'est surtout l'endroit ou
+   etait rangee la cle qui posait probleme.
+
+2. OBJET DE LA PUBLICATION
+   Ce depot est publie a titre informatif et educatif, notamment pour
+   documenter les failles de securite decrites dans
+   ANALYSE_SECURITE_TOKENS.txt.
+
+   Avant publication, toutes les informations sensibles ont ete retirees :
+   tokens de bots, cle de chiffrement, cles de licence, mots de passe et
+   bases de donnees clients.
+
+3. AUCUNE GARANTIE
+   Le code est fourni "EN L'ETAT", sans garantie d'aucune sorte, expresse
+   ou implicite. Le publieur decline toute responsabilite quant a son
+   utilisation, et quiconque l'heberge le fait a ses propres risques.
+   Lisez le rapport de securite avant d'y mettre le token de qui que ce
+   soit.
+
+4. RETRAIT
+   Si vous faites partie des auteurs de ZixBots et souhaitez que ce depot
+   soit modifie ou retire, ouvrez une issue ou contactez le proprietaire du
+   depot. La demande sera traitee sans discussion.
+
+Pas de rancune, juste un chmod 600 a faire. 😘

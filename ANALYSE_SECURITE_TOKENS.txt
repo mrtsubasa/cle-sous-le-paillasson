@@ -190,10 +190,11 @@ rangee la cle et de qui peut y acceder.
 
 [F10] FAIBLE - Identifiants d'infra en dur (corrige pendant le nettoyage)
      Fichier : music/src/core/config.js
-     Le mot de passe Lavalink "agent" et l'hote panel.agentdushield.fr
-     servaient de valeurs par defaut. Avec un mot de passe aussi faible,
-     n'importe qui pouvait utiliser ce serveur Lavalink. Si "agent" est le
-     vrai mot de passe en production, il faut le changer.
+     Un mot de passe Lavalink (un mot du dictionnaire de 5 lettres) et
+     l'hote d'un serveur Lavalink prive servaient de valeurs par defaut,
+     en dur dans le code (valeurs retirees). Avec un mot de passe aussi
+     faible, n'importe qui pouvait utiliser ce serveur. S'il est utilise en
+     production, il faut le changer.
 
 
 -------------------------------------------------------------------------------
@@ -225,7 +226,7 @@ rangee la cle et de qui peut y acceder.
   IMMEDIAT (aujourd'hui)
   [ ] Si une copie du dossier d'origine a pu circuler : regenerer les 56
       tokens Discord et invalider les 37 cles de licence.
-  [ ] Changer le mot de passe Lavalink si "agent" est utilise en prod.
+  [ ] Changer le mot de passe Lavalink d'origine s'il est utilise en prod.
   [ ] Ne plus jamais mettre dans une archive : .token-secret, *.db, *.db-wal,
       *.db-shm, .env, BotRuntimes/. Les ajouter au .gitignore et a un
       script de packaging qui les exclut.

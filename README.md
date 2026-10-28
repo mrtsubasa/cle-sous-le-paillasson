@@ -170,7 +170,7 @@ Ce `.env` sert de modèle et est recopié dans chaque runtime music.
 ```env
 LAVALINK_HOST=ton.lavalink.tld
 LAVALINK_PORT=2333
-LAVALINK_PASSWORD=un_vrai_mot_de_passe_pas_agent
+LAVALINK_PASSWORD=un_vrai_mot_de_passe_solide
 LAVALINK_SECURE=false
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
@@ -246,11 +246,11 @@ Parce qu'elle contenait les tokens de 55 bots clients et 37 clés de licence. El
 Maintenant, oui, à condition de mettre la clé ailleurs que dans le dossier qu'il est censé protéger.
 
 **Je peux revendre ça ?**
-Tu peux surtout lire le rapport de sécurité avant d'y mettre les tokens de quelqu'un.
+Non. Le code appartient à ses auteurs d'origine et n'est sous aucune licence libre, voir [`LICENSE`](LICENSE). Lis plutôt le rapport de sécurité.
 
 **Support ?**
 Non. 😘
 
 ---
 
-<sub>Publié tel quel, sans garantie d'aucune sorte. Les secrets d'origine ont été retirés. Si tu en trouves un qui a survécu, dis-le, ce sera drôle.</sub>
+<sub>Code © ses auteurs d'origine, voir [`LICENSE`](LICENSE). Publié tel quel à but éducatif, sans garantie d'aucune sorte. Les secrets d'origine ont été retirés. Si tu en trouves un qui a survécu, dis-le, ce sera drôle.</sub>
